@@ -83,8 +83,7 @@ object Main extends ZIOAppDefault {
     input <- ZIO.succeed(pipe())
 
     // take everything after "found"
-    split = input.split("found") // TODO: make sure there is only 1 <<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-    text = split(1)
+    text = input.substring(input.indexOf("found"))
 
     // expecting 4 lines: found, (which expands to), required, (which expands to)
     /*
@@ -150,6 +149,9 @@ object Main extends ZIOAppDefault {
     _ <- ZIO.succeed(requiredWriter.close)
 
     _ <- ZIO.succeed(Seq("diff", "-y", requiredFile.getPath, foundFile.getPath).!)
+
+    _ <- ZIO.succeed(foundFile.delete())
+    _ <- ZIO.succeed(requiredFile.delete())
   } yield ()
 }
 
