@@ -2,11 +2,12 @@
 
 ![Alt Text](./usage.gif)
 
-### Build & Run
+### Install
 ```
+git clone git@github.com:abugov/ziodiff.git
+cd ziodiff
 sbt assembly
 cp target/scala-2.13/ziodiff.jar /usr/local/bin/
-
 sudo cp target/scala-2.13/ziodiff.jar /usr/local/bin/
 alias ziodiff='pbpaste | java -jar /usr/local/bin/ziodiff.jar'
 ```
