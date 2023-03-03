@@ -1,3 +1,7 @@
+### Usage
+
+![Alt Text](./usage.gif)
+
 ### Build & Run
 ```
 sbt assembly
