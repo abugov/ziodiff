@@ -152,3 +152,15 @@ object Main extends ZIOAppDefault {
     _ <- ZIO.succeed(Seq("diff", "-y", requiredFile.getPath, foundFile.getPath).!)
   } yield ()
 }
+
+/*
+test:
+
+/Users/abugov/github/abugov/myproject/Main.scala:23:79
+type mismatch;
+found   : zio.URIO[zio.system.System with zio.logging.Logging with zio.Has[zio.clock.Clock.Service] with zio.Has[zio.console.Console.Service] with zio.Has[zio.system.System.Service] with zio.Has[zio.random.Random.Service] with zio.Has[zio.blocking.Blocking.Service] with zio.console.Console,zio.ExitCode]
+(which expands to)  zio.ZIO[zio.Has[zio.system.System.Service] with zio.Has[zio.logging.Logger[String]] with zio.Has[zio.clock.Clock.Service] with zio.Has[zio.console.Console.Service] with zio.Has[zio.system.System.Service] with zio.Has[zio.random.Random.Service] with zio.Has[zio.blocking.Blocking.Service] with zio.Has[zio.console.Console.Service],Nothing,zio.ExitCode]
+required: zio.URIO[zio.ZEnv,zio.ExitCode]
+(which expands to)  zio.ZIO[zio.Has[zio.clock.Clock.Service] with zio.Has[zio.console.Console.Service] with zio.Has[zio.system.System.Service] with zio.Has[zio.random.Random.Service] with zio.Has[zio.blocking.Blocking.Service],Nothing,zio.ExitCode]
+override def run(args: List[String]) = runJobWithMetrics("", program(args)).exitCode
+ */
