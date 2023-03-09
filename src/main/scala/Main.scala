@@ -79,24 +79,40 @@ object Main extends ZIOAppDefault {
       List.fill(linesCount.A - z.A.split('\n').length)("\n").foreach(writer.write(_))
     }
 
-  override def run: ZIO[Environment with ZIOAppArgs with Scope, Any, Any] = for {
-    input <- ZIO.succeed(pipe())
+  override def run: ZIO[Environment with ZIOAppArgs with Scope, Any, Any] = ZIO.succeed(run_)
+
+  def run_ = {
+    val input = pipe()
 
     // take everything after "found"
-    text = input.substring(input.indexOf("found"))
+    val text = input.substring(input.indexOf("found"))
 
-    // expecting 4 lines: found, (which expands to), required, (which expands to)
-    /*
-    found   : zio.URIO[zio...
-       (which expands to)  zio.ZIO[zio...
-    required: zio.URIO[zio...
-       (which expands to)  zio.ZIO[zio...
-     */
-    lines = text.split("\n")
-    foundStr = cleanFound(lines(0)) // "found ..."
-    foundExpandsStr = cleanExpands(lines(1)) // "(which expands to) ..."
-    requiredStr = cleanRequired(lines(2)) // "required ..."
-    requiredExpandsStr = cleanExpands(lines(3)) // "(which expands to) ..."
+    // expecting 2-4 lines:
+    // 1. found
+    // 2. (which expands to) [optional]
+    // 3. required
+    // 4. (which expands to) [optional]
+    val lines = text.split("\n")
+    var line = 0
+
+    val foundStr = cleanFound(lines(line)) // "found ..."
+    line += 1
+
+    // "(which expands to) ..."
+    var foundExpandsStr = foundStr
+    if (lines(line).contains("(which expands to)")) {
+      foundExpandsStr = cleanExpands(lines(line))
+      line += 1
+    }
+
+    val requiredStr = cleanRequired(lines(line)) // "required ..."
+    line += 1
+
+    // "(which expands to) ..."
+    var requiredExpandsStr = requiredStr
+    if (lines(line).contains("(which expands to)")) {
+      requiredExpandsStr = cleanExpands(lines(line))
+    }
 
     /*
     zio.URIO[zio... , ...]
@@ -105,54 +121,54 @@ object Main extends ZIOAppDefault {
     zio.ZIO[zio...  , ... , ... ]
      */
 
-    found = makeZio(foundStr)
-    foundExpands = makeZio(foundExpandsStr)
-    required = makeZio(requiredStr)
-    requiredExpands = makeZio(requiredExpandsStr)
+    val found = makeZio(foundStr)
+    val foundExpands = makeZio(foundExpandsStr)
+    val required = makeZio(requiredStr)
+    val requiredExpands = makeZio(requiredExpandsStr)
 
-    linesCount = LinesCount(
+    val linesCount = LinesCount(
       math.max(found.R.split('\n').length, required.R.split('\n').length),
       math.max(found.E.split('\n').length, required.E.split('\n').length),
       math.max(found.A.split('\n').length, required.A.split('\n').length)
     )
 
-    expandsLinesCount = LinesCount(
+    val expandsLinesCount = LinesCount(
       math.max(foundExpands.R.split('\n').length, requiredExpands.R.split('\n').length),
       math.max(foundExpands.E.split('\n').length, requiredExpands.E.split('\n').length),
       math.max(foundExpands.A.split('\n').length, requiredExpands.A.split('\n').length)
     )
 
-    foundFile = File.createTempFile("ziodiff-", "-found")
-    requiredFile = File.createTempFile("ziodiff-", "-required")
+    val foundFile = File.createTempFile("ziodiff-", "-found")
+    val requiredFile = File.createTempFile("ziodiff-", "-required")
 
-    foundWriter = new BufferedWriter(new FileWriter(foundFile))
-    requiredWriter = new BufferedWriter(new FileWriter(requiredFile))
+    val foundWriter = new BufferedWriter(new FileWriter(foundFile))
+    val requiredWriter = new BufferedWriter(new FileWriter(requiredFile))
 
-    _ <- ZIO.succeed(foundWriter.write("=============\n"))
-    _ <- ZIO.succeed(foundWriter.write("=== FOUND ===\n"))
-    _ <- ZIO.succeed(foundWriter.write("=============\n"))
-    _ <- ZIO.succeed(writeToFile(foundWriter, found, linesCount))
-    _ <- ZIO.succeed(foundWriter.write("==================\n"))
-    _ <- ZIO.succeed(foundWriter.write("=== EXPANDS TO ===\n"))
-    _ <- ZIO.succeed(foundWriter.write("==================\n"))
-    _ <- ZIO.succeed(writeToFile(foundWriter, foundExpands, expandsLinesCount))
-    _ <- ZIO.succeed(requiredWriter.write("================\n"))
-    _ <- ZIO.succeed(requiredWriter.write("=== REQUIRED ===\n"))
-    _ <- ZIO.succeed(requiredWriter.write("================\n"))
-    _ <- ZIO.succeed(writeToFile(requiredWriter, required, linesCount))
-    _ <- ZIO.succeed(requiredWriter.write("==================\n"))
-    _ <- ZIO.succeed(requiredWriter.write("=== EXPANDS TO ===\n"))
-    _ <- ZIO.succeed(requiredWriter.write("==================\n"))
-    _ <- ZIO.succeed(writeToFile(requiredWriter, requiredExpands, expandsLinesCount))
+    foundWriter.write("=============\n")
+    foundWriter.write("=== FOUND ===\n")
+    foundWriter.write("=============\n")
+    writeToFile(foundWriter, found, linesCount)
+    foundWriter.write("==================\n")
+    foundWriter.write("=== EXPANDS TO ===\n")
+    foundWriter.write("==================\n")
+    writeToFile(foundWriter, foundExpands, expandsLinesCount)
+    requiredWriter.write("================\n")
+    requiredWriter.write("=== REQUIRED ===\n")
+    requiredWriter.write("================\n")
+    writeToFile(requiredWriter, required, linesCount)
+    requiredWriter.write("==================\n")
+    requiredWriter.write("=== EXPANDS TO ===\n")
+    requiredWriter.write("==================\n")
+    writeToFile(requiredWriter, requiredExpands, expandsLinesCount)
 
-    _ <- ZIO.succeed(foundWriter.close)
-    _ <- ZIO.succeed(requiredWriter.close)
+    foundWriter.close
+    requiredWriter.close
 
-    _ <- ZIO.succeed(Seq("diff", "-y", requiredFile.getPath, foundFile.getPath).!)
+    Seq("diff", "-y", requiredFile.getPath, foundFile.getPath).!
 
-    _ <- ZIO.succeed(foundFile.delete())
-    _ <- ZIO.succeed(requiredFile.delete())
-  } yield ()
+    foundFile.delete()
+    requiredFile.delete()
+  }
 }
 
 /*
@@ -165,4 +181,13 @@ found   : zio.URIO[zio.system.System with zio.logging.Logging with zio.Has[zio.c
 required: zio.URIO[zio.ZEnv,zio.ExitCode]
 (which expands to)  zio.ZIO[zio.Has[zio.clock.Clock.Service] with zio.Has[zio.console.Console.Service] with zio.Has[zio.system.System.Service] with zio.Has[zio.random.Random.Service] with zio.Has[zio.blocking.Blocking.Service],Nothing,zio.ExitCode]
 override def run(args: List[String]) = runJobWithMetrics("", program(args)).exitCode
+
+
+/Users/abugov/github/abugov/myproject/Main.scala:23:79
+type mismatch;
+ found   : zio.stream.ZStream[zio.blocking.Blocking,io.github.vigoo.zioaws.core.AwsError,Byte]
+    (which expands to)  zio.stream.ZStream[zio.Has[zio.blocking.Blocking.Service],io.github.vigoo.zioaws.core.AwsError,Byte]
+ required: zio.stream.ZStream[Any,io.github.vigoo.zioaws.core.AwsError,Byte]
+    s3.putObject(s3PutObjectRequest, streamWithAwsError)
+
  */
